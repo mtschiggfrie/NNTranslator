@@ -17,7 +17,13 @@ public class Node {
             Random random = new Random();
             weights.add(random.nextDouble());
         }
-        bias = 0.3;
+        bias = (new Random()).nextDouble();
+    }
+
+    public Node(ArrayList<Double> list) {
+        weights = new ArrayList<>(list);
+        previousWeights = new ArrayList<>();
+        bias = (new Random()).nextDouble();
     }
 
     private double sigmoidFunction(double sum) {
@@ -41,5 +47,13 @@ public class Node {
 
     public void revertWeights() {
         weights = new ArrayList<>(previousWeights);
+    }
+
+    public int weightsSize() {
+        return weights.size();
+    }
+
+    public ArrayList<Double> getWeights() {
+        return weights;
     }
 }

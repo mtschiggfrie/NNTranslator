@@ -1,4 +1,8 @@
+import java.io.*;
 import java.util.ArrayList;
+import java.util.Scanner;
+
+import static javax.script.ScriptEngine.FILENAME;
 
 /**
  * Created by MatthewT on 4/3/2017.
@@ -6,34 +10,35 @@ import java.util.ArrayList;
 public class NeuralNetwork {
 
     private ArrayList<Layer> layers;
+    private ArrayList<ArrayList<Integer>> inputs;
+    private ArrayList<ArrayList<Integer>> outputs;
 
     public NeuralNetwork() {
         layers = new ArrayList<>();
-        int numberOfInputs = 3;
-        int numberOfOutputs = 1;
+        InputReader inputReader = new InputReader();
+        inputs = new ArrayList<>(inputReader.getInputVectors());
+        outputs = new ArrayList<>(inputReader.getOutputVectors());
+
+        int numberOfInputs = inputs.get(0).size();
+        int numberOfOutputs = outputs.get(0).size();
         int numberOfLayers = 3;
-        double learningConstant = 1;
-        int reps = 100000;
+        double learningConstant = 0.01;
+        int reps = 0;
 
-        layers.add(new Layer(numberOfInputs, 5));
-        layers.add(new Layer(5, 2));
-        layers.add(new Layer(2, numberOfOutputs));
+        layers.add(new Layer(numberOfInputs, 100));
+        layers.add(new Layer(100, 50));
+        layers.add(new Layer(50, numberOfOutputs));
 
-        String[][] inputs = {{"0","1","0"},{"1","1","1"}, {"1","0","1"},{"1","1","0"},{"1","0","0"},{"0","0","1"},{"0","1","1"}};
-        String[] outputs = {"1","1","0","0","1","1","0"};
-
-        ArrayList<Double> outputList = new ArrayList<>();
-        for (int i = 0; i < outputs.length; ++i) {
-            outputList.add(Double.parseDouble(outputs[i]));
-        }
+        loadNetwork();
+        saveNetwork();
 
         int index = 0;
         while (index < reps) {
-            int correct = 0;
-            for (int i = 0; i < outputList.size(); ++i) {
+
+            for (int i = 0; i < outputs.size(); ++i) {
                 ArrayList<Double> currentInput = new ArrayList<>();
-                for (int j = 0; j < inputs[0].length; ++j) {
-                    currentInput.add(Double.parseDouble(inputs[i][j]));
+                for (int j = 0; j < inputs.get(i).size(); ++j) {
+                    currentInput.add((double) inputs.get(i).get(j));
                 }
 
                 ArrayList<Double> outputOfLayer = new ArrayList<>();
@@ -44,13 +49,13 @@ public class NeuralNetwork {
                     outputOfLayers.add(outputOfLayer);
                 }
 
-                Double error = outputList.get(i) - outputOfLayer.get(0);
-                if (outputList.get(i) == 0 && outputOfLayer.get(0) < 0.5) {
-                    correct++;
+                Double error = 0.0;
+                for (int j = 0; j < outputOfLayer.size(); ++j) {
+                    error = error + outputs.get(i).get(j) - outputOfLayer.get(j);
                 }
-                else if (outputList.get(i) == 1 && outputOfLayer.get(0) > 0.5) {
-                    correct++;
-                }
+
+                System.out.println(inputReader.convertOutputInt(outputs.get(i)));
+                System.out.println(inputReader.convertOutputDouble(outputOfLayer));
 
                 ArrayList<Double> previousLayerWeightChange = new ArrayList<>();
 
@@ -60,7 +65,7 @@ public class NeuralNetwork {
                         double currentOutput = outputOfLayers.get(j).get(k);
                         double deltaWeight = 0;
                         if (j == outputOfLayers.size() - 1) {
-                            deltaWeight = learningConstant * (outputList.get(i) - currentOutput) * (1 - currentOutput) * currentOutput;
+                            deltaWeight = learningConstant * (outputs.get(i).get(k) - currentOutput) * (1 - currentOutput) * currentOutput;
                             layerWeightChange.add(deltaWeight);
                         } else {
                             for (int p = 0; p < previousLayerWeightChange.size(); ++p) {
@@ -76,19 +81,79 @@ public class NeuralNetwork {
 
             }
             index++;
-            System.out.println(correct);
         }
     }
 
-    private double dotProduct(ArrayList<Double> l1, ArrayList<Double> l2) {
-        double dotProduct = 0;
-        for (int i = 0; i < l1.size(); ++i) {
-            dotProduct += (l1.get(i) * l2.get(i));
+    private void saveNetwork() {
+        BufferedWriter bw = null;
+        FileWriter fw = null;
+
+        try {
+            fw = new FileWriter("savedNN2.txt");
+            bw = new BufferedWriter(fw);
+
+            for (int i = 0; i < layers.size(); ++i) {
+                ArrayList<ArrayList<Double>> layerWeights = layers.get(i).getNodeWeights();
+                bw.write("LAYER " + i + "\n");
+                for (int j = 0; j < layerWeights.size(); ++j) {
+                    for (int p = 0; p < layerWeights.get(j).size(); ++p) {
+                        bw.write(layerWeights.get(j).get(p) + ",");
+                    }
+                    bw.write("\n");
+                }
+            }
+
+            System.out.println("Done");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+
+        } finally {
+            try {
+                if (bw != null)
+                    bw.close();
+
+                if (fw != null)
+                    fw.close();
+
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         }
-        return dotProduct;
     }
 
-    private double deriv(double d) {
-        return d * (1 - d);
+    private void loadNetwork() {
+        layers.clear();
+        try {
+            Scanner scanner = new Scanner(new File("C:/Users/MatthewT/Desktop/nn/savedNN.txt"));
+            Layer layer;
+            scanner.nextLine();
+            ArrayList<ArrayList<Double>> weights = new ArrayList<ArrayList<Double>>();
+
+            while(scanner.hasNextLine()) {
+                String currentLine = scanner.nextLine().toLowerCase();
+                if (!currentLine.contains("layer")) {
+                    String[] array = currentLine.split(",");
+                    ArrayList<Double> currentWeights = new ArrayList<>();
+                    for (int i = 0; i < array.length; ++i) {
+                        currentWeights.add(Double.parseDouble(array[i]));
+                    }
+                    weights.add(currentWeights);
+                }
+                else {
+                    layers.add(new Layer(weights));
+                    weights.clear();
+                }
+            }
+            layers.add(new Layer(weights));
+            weights.clear();
+            scanner.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+        }
     }
+
 }

@@ -18,6 +18,16 @@ public class Layer {
         }
     }
 
+    public Layer(ArrayList<ArrayList<Double>> list) {
+        listOfNodes = new ArrayList<>();
+        previousInputs = new ArrayList<>();
+        previousOutputs = new ArrayList<>();
+
+        for (int i = 0; i < list.size(); ++i) {
+            listOfNodes.add(new Node(list.get(i)));
+        }
+    }
+
     public ArrayList<Double> computeOutputs(ArrayList<Double> inputs) {
         previousInputs = inputs;
         ArrayList<Double> outputs = new ArrayList<>();
@@ -61,5 +71,17 @@ public class Layer {
             listOfNodes.get(i).updateWeights(changeOfWeights);
             changeOfWeights.clear();
         }
+    }
+
+    public int getNodesSize() {
+        return listOfNodes.size();
+    }
+
+    public ArrayList<ArrayList<Double>> getNodeWeights() {
+        ArrayList<ArrayList<Double>> weightList = new ArrayList<ArrayList<Double>>();
+        for (int i = 0; i < listOfNodes.size(); ++i) {
+            weightList.add(listOfNodes.get(i).getWeights());
+        }
+        return weightList;
     }
 }
